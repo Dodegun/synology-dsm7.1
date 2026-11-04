@@ -1,16 +1,19 @@
 {
   "8.2": {
     "version": "8.2.35",
+    "build": "0002",
     "source": "php-8.2.35.tar.xz",
     "metadata_id": 11
   },
   "8.3": {
     "version": "8.3.36",
+    "build": "0002",
     "source": "php-8.3.36.tar.xz",
     "metadata_id": 12
   },
   "8.4": {
     "version": "8.4.27",
+    "build": "0002",
     "source": "php-8.4.27.tar.xz",
     "metadata_id": 13
   }

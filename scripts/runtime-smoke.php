@@ -9,7 +9,7 @@ function require_check(bool $condition, string $name): void {
     }
 }
 
-$required = ['bcmath', 'calendar', 'curl', 'dom', 'exif', 'fileinfo', 'ftp',
+$required = ['bcmath', 'calendar', 'curl', 'dom', 'exif', 'fileinfo', 'ftp', 'gd',
     'hash', 'iconv', 'json', 'libxml', 'mbstring', 'mysqli', 'mysqlnd', 'openssl',
     'PDO', 'pdo_mysql', 'pdo_sqlite', 'session', 'SimpleXML', 'sockets', 'sqlite3',
     'tokenizer', 'xml', 'xmlreader', 'xmlwriter', 'zip', 'zlib', 'apcu', 'Zend OPcache'];
@@ -17,6 +17,38 @@ foreach ($required as $extension) {
     require_check(extension_loaded($extension), 'extension: ' . $extension);
 }
 require_check(PHP_VERSION === getenv('PHP_EXPECTED_VERSION'), 'PHP version');
+$gd = gd_info();
+foreach (['PNG Support', 'JPEG Support', 'WebP Support', 'FreeType Support'] as $feature) {
+    require_check(!empty($gd[$feature]), 'GD capability: ' . $feature);
+}
+$image = imagecreatetruecolor(64, 32);
+require_check($image !== false, 'GD truecolor image');
+imagefill($image, 0, 0, imagecolorallocate($image, 30, 90, 150));
+$font = getenv('PHP_SMOKE_GD_FONT');
+require_check(is_string($font) && is_file($font), 'GD test font');
+$box = imagettfbbox(10, 0, $font, 'GD');
+require_check(is_array($box) && count($box) === 8 && $box[2] > $box[0], 'GD FreeType bounds');
+require_check(is_array(imagettftext($image, 10, 0, 2, 18,
+    imagecolorallocate($image, 255, 255, 255), $font, 'GD')), 'GD FreeType text');
+$thumbnail = imagecreatetruecolor(32, 16);
+require_check($thumbnail !== false, 'GD thumbnail image');
+require_check(imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, 32, 16, 64, 32), 'GD resize');
+foreach (['png', 'jpeg', 'webp'] as $format) {
+    ob_start();
+    $encoded = match ($format) {
+        'png' => imagepng($thumbnail),
+        'jpeg' => imagejpeg($thumbnail, null, 90),
+        'webp' => imagewebp($thumbnail, null, 90),
+    };
+    $bytes = ob_get_clean();
+    require_check($encoded && is_string($bytes) && $bytes !== '', 'GD encode: ' . $format);
+    $decoded = imagecreatefromstring($bytes);
+    require_check($decoded !== false && imagesx($decoded) === 32 && imagesy($decoded) === 16,
+        'GD decode: ' . $format);
+    imagedestroy($decoded);
+}
+imagedestroy($thumbnail);
+imagedestroy($image);
 require_check(mb_strlen('가나다', 'UTF-8') === 3, 'UTF-8 mbstring');
 $euc = mb_convert_encoding('한글', 'EUC-KR', 'UTF-8');
 require_check(mb_convert_encoding($euc, 'UTF-8', 'EUC-KR') === '한글', 'Korean encoding roundtrip');
@@ -104,6 +136,8 @@ echo json_encode([
     'libxml' => LIBXML_DOTTED_VERSION,
     'sqlite' => SQLite3::version()['versionString'],
     'extensions_checked' => count($required),
+    'gd_formats_checked' => ['png', 'jpeg', 'webp'],
+    'gd_freetype_checked' => true,
     'verified_local_https' => $tlsUrl !== false && $tlsUrl !== '',
     'ini_file' => php_ini_loaded_file(),
     'session_upload_progress' => ini_get('session.upload_progress.enabled'),

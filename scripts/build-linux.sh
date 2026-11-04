@@ -151,11 +151,47 @@ build_libzip() {
     cmake --install "$ROOT/src/libzip/build"
 }
 
+build_libpng() {
+    cd "$ROOT/src/libpng"
+    ./configure --prefix="$DEPS" --host="$HOST" --disable-shared --enable-static
+    make -j"$JOBS"; make install
+}
+
+build_libjpeg() {
+    cmake -S "$ROOT/src/libjpeg" -B "$ROOT/src/libjpeg/build" \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$DEPS" -DCMAKE_INSTALL_LIBDIR=lib \
+        -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
+        -DCMAKE_C_COMPILER="$TC/bin/$CC" -DCMAKE_CXX_COMPILER="$TC/bin/$CXX" \
+        -DCMAKE_FIND_ROOT_PATH="$DEPS;$SYSROOT" \
+        -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+        -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+        -DCMAKE_C_FLAGS="$CFLAGS" -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DWITH_SIMD=OFF \
+        -DWITH_TURBOJPEG=OFF -DWITH_TOOLS=OFF -DWITH_TESTS=OFF
+    cmake --build "$ROOT/src/libjpeg/build" -j"$JOBS"
+    cmake --install "$ROOT/src/libjpeg/build"
+}
+
+build_freetype() {
+    cd "$ROOT/src/freetype"
+    ./configure --prefix="$DEPS" --host="$HOST" --disable-shared --enable-static \
+        --with-zlib=yes --with-png=yes --without-bzip2 --without-harfbuzz --without-brotli
+    make -j"$JOBS"; make install
+}
+
+build_libwebp() {
+    cd "$ROOT/src/libwebp"
+    ./configure --prefix="$DEPS" --host="$HOST" --disable-shared --enable-static \
+        --disable-gl --disable-sdl --disable-libwebpextras \
+        --disable-libwebpdemux --disable-libwebpmux --disable-avx2 --disable-sse4.1
+    make -j"$JOBS"; make install
+}
+
 build_php() {
     cd "$ROOT/src/php"
     if [[ ! -d ext/apcu ]]; then cp -a "$ROOT/src/apcu" ext/apcu; fi
     ./buildconf --force
-    LIBS='-Wl,--start-group -lcurl -lssl -lcrypto -lz -lxml2 -lsqlite3 -lonig -lzip -ldl -lpthread -lm -Wl,--end-group' \
+    LIBS='-Wl,--start-group -lcurl -lssl -lcrypto -lxml2 -lsqlite3 -lonig -lzip -lfreetype -lpng16 -ljpeg -lwebp -lsharpyuv -lz -ldl -lpthread -lm -Wl,--end-group' \
     EXTENSION_DIR="$PREFIX/usr/local/lib/$PHP_TAG/modules" ./configure \
         --prefix="$PREFIX/usr/local" --bindir="$PREFIX/usr/local/bin" \
         --sbindir="$PREFIX/usr/local/bin" --libdir="$PREFIX/usr/local/lib/$PHP_TAG" \
@@ -164,6 +200,7 @@ build_php() {
         --with-fpm-user=http --with-fpm-group=http --disable-phpdbg \
         --enable-opcache --disable-opcache-jit --enable-apcu=shared \
         --enable-bcmath=shared --enable-calendar=shared --enable-exif=shared \
+        --enable-gd=shared --with-jpeg --with-freetype --with-webp \
         --enable-ftp=shared --enable-mbstring=shared --enable-shmop=shared \
         --enable-sockets=shared --enable-sysvmsg=shared --enable-sysvsem=shared \
         --enable-sysvshm=shared --with-curl=shared --with-openssl=shared \
@@ -183,7 +220,7 @@ build_php() {
     cp php.ini-production "$STAGE/etc/php.ini"
     printf '\n; NAS package paths\nextension_dir=%s/usr/local/lib/%s/modules\ncurl.cainfo=%s/etc/cacert.pem\nopenssl.cafile=%s/etc/cacert.pem\n' "$PREFIX" "$PHP_TAG" "$PREFIX" "$PREFIX" >> "$STAGE/etc/php.ini"
     : > "$STAGE/etc/conf.d/extensions.ini"
-    for module in bcmath calendar curl dom exif ftp iconv mbstring mysqli pdo_mysql pdo_sqlite shmop simplexml sockets sqlite3 sysvmsg sysvsem sysvshm xml xmlreader xmlwriter zip zlib openssl; do
+    for module in bcmath calendar curl dom exif ftp gd iconv mbstring mysqli pdo_mysql pdo_sqlite shmop simplexml sockets sqlite3 sysvmsg sysvsem sysvshm xml xmlreader xmlwriter zip zlib openssl; do
         [[ ! -f "$STAGE/usr/local/lib/$PHP_TAG/modules/$module.so" ]] || printf 'extension=%s\n' "$module" >> "$STAGE/etc/conf.d/extensions.ini"
     done
     printf 'zend_extension=opcache.so\nextension=apcu.so\nopcache.jit=0\n' > "$STAGE/etc/conf.d/cache.ini"
@@ -195,9 +232,9 @@ build_php() {
 }
 
 step inputs verify_inputs
-for name in zlib openssl sqlite3 oniguruma libxml2 curl libzip apcu; do unpack "$name"; done
+for name in zlib openssl sqlite3 oniguruma libxml2 curl libzip libpng libjpeg freetype libwebp apcu; do unpack "$name"; done
 unpack php "$PHP_SOURCE"
-for name in zlib openssl sqlite3 oniguruma libxml2 curl libzip; do
+for name in zlib openssl sqlite3 oniguruma libxml2 curl libzip libpng libjpeg freetype libwebp; do
     if [[ ! -f "$DEPS/.built-$name" ]]; then
         step "$name" "build_$name"
         touch "$DEPS/.built-$name"

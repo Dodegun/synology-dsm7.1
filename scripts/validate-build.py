@@ -156,7 +156,8 @@ def main():
     loader = [str(SDK / 'lib/ld-linux-x86-64.so.2'), '--library-path',
               ':'.join(map(str, [SDK/'lib', SDK/'usr/lib', TOOL_LIB]))]
     env = dict(os.environ, PHP_INI_SCAN_DIR=str(stage / 'etc/conf.d'),
-               GCONV_PATH=str(SDK / 'usr/lib/gconv'), PHP_EXPECTED_VERSION=VARIANT['version'])
+               GCONV_PATH=str(SDK / 'usr/lib/gconv'), PHP_EXPECTED_VERSION=VARIANT['version'],
+               PHP_SMOKE_GD_FONT='/build/src/php/ext/gd/tests/Tuffy.ttf')
     # These paths exist on DSM; create container-only counterparts for final ini validation.
     Path('/var/services/tmp').mkdir(parents=True, exist_ok=True)
     with contextlib.ExitStack() as stack:

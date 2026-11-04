@@ -26,6 +26,9 @@ _versions_document = json.loads(_versions_path.read_text("utf-8"))
 _versions = _versions_document.get("versions", _versions_document)
 BUILD_VERSION = _versions[PHP_SERIES]
 PHP_VERSION = BUILD_VERSION["version"]
+BUILD_NUMBER = BUILD_VERSION["build"]
+if not isinstance(BUILD_NUMBER, str) or not re.fullmatch(r"[0-9]{4}", BUILD_NUMBER):
+    raise ValueError("Selected package build must contain four digits")
 if not re.fullmatch(re.escape(PHP_SERIES) + r"\.[0-9]+", PHP_VERSION):
     raise ValueError("Selected versions.json version does not match PHP_SERIES")
 METADATA_ID = BUILD_VERSION["metadata_id"]
@@ -36,7 +39,7 @@ PHP_PREFIX = f"php{PHP_SERIES.replace('.', '')}"
 TARGET = f"/var/packages/{PACKAGE}/target"
 MODULE_DIR = f"usr/local/lib/{PHP_PREFIX}/modules"
 REQUIRED_BINARIES = (PHP_PREFIX, f"{PHP_PREFIX}-cgi", f"{PHP_PREFIX}-fpm")
-REQUIRED_CACHE_MODULES = ("opcache", "apcu")
+REQUIRED_MODULES = ("opcache", "apcu", "gd")
 ZEND_MODULES = {"opcache", "xdebug"}
 SPECIAL_WS_MODULES = ZEND_MODULES | {"apcu"}
 MAX_INPUT_BYTES = 1024 * 1024 * 1024
@@ -54,6 +57,7 @@ REQUIRED_INI = {
 TEMPLATE_VALUES = {
     "PHP_SERIES": PHP_SERIES,
     "PHP_VERSION": PHP_VERSION,
+    "BUILD_NUMBER": BUILD_NUMBER,
     "PACKAGE": PACKAGE,
     "PHP_PREFIX": PHP_PREFIX,
     "TARGET": TARGET,
@@ -372,9 +376,9 @@ def validate_runtime(entries: dict[str, Entry]) -> list[str]:
     for module in modules:
         if not re.fullmatch(r"[A-Za-z0-9_]+", module):
             raise ValueError(f"Unsafe module name: {module}")
-    missing = set(REQUIRED_CACHE_MODULES) - set(modules)
+    missing = set(REQUIRED_MODULES) - set(modules)
     if missing:
-        raise ValueError(f"Web Station cache option requires staged modules: {sorted(missing)}")
+        raise ValueError(f"Missing required staged modules: {sorted(missing)}")
     return modules
 
 
@@ -598,7 +602,7 @@ def main() -> None:
     parser.add_argument("output", type=Path, nargs="?", help="Destination unsigned .spk")
     parser.add_argument("--scaffold", type=Path, default=Path(__file__).resolve().parents[1] / "package")
     parser.add_argument("--settings-json", type=Path, help="Fresh runtime-generated Web Station core/extensions INI defaults")
-    parser.add_argument("--version", default=f"{PHP_VERSION}-0001")
+    parser.add_argument("--version", default=f"{PHP_VERSION}-{BUILD_NUMBER}")
     parser.add_argument("--source-date-epoch", type=int, default=int(os.environ.get("SOURCE_DATE_EPOCH", "0")))
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--self-test", action="store_true")

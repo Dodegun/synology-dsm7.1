@@ -16,6 +16,8 @@ def load_variant():
     version = selected['version']
     if not re.fullmatch(re.escape(series) + r'\.\d+', version):
         raise ValueError(f'Invalid PHP version: {version}')
+    if not isinstance(selected.get('build'), str) or not re.fullmatch(r'\d{4}', selected['build']):
+        raise ValueError('Invalid PHP package build number')
     if selected['source'] != f'php-{version}.tar.xz':
         raise ValueError('Invalid locked PHP source archive')
     source_lock = json.loads((Path(__file__).resolve().parent.parent / 'sources.lock.json').read_text())
@@ -35,6 +37,7 @@ if __name__ == '__main__':
     selected = load_variant()
     if args.shell:
         values = {'PHP_SERIES': selected['series'], 'PHP_VERSION': selected['version'],
+                  'BUILD_NUMBER': selected['build'],
                   'PHP_SOURCE': selected['source_name'], 'PHP_TAG': selected['tag'],
                   'PHP_SUFFIX': selected['suffix'], 'PACKAGE': selected['package'],
                   'PREFIX': selected['target']}

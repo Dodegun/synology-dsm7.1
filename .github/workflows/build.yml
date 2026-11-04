@@ -49,8 +49,8 @@ jobs:
       - name: Select the pinned PHP release
         run: |
           eval "$(python3 scripts/variant_config.py --shell)"
-          echo "SPK=$PACKAGE-cedarview-$PHP_VERSION-0001.spk" >> "$GITHUB_ENV"
-          echo "RELEASE_TAG=php-$PHP_VERSION-0001" >> "$GITHUB_ENV"
+          echo "SPK=$PACKAGE-cedarview-$PHP_VERSION-$BUILD_NUMBER.spk" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=php-$PHP_VERSION-$BUILD_NUMBER" >> "$GITHUB_ENV"
           python3 scripts/variant_config.py
       - name: Skip versions already published
         id: release

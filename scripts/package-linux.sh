@@ -7,7 +7,7 @@ STAGE=/build/stage$PREFIX
 SDK=/build/toolchain/x86_64-pc-linux-gnu/x86_64-pc-linux-gnu/sys-root
 LOADER=$SDK/lib/ld-linux-x86-64.so.2
 LIBPATH=$SDK/lib:$SDK/usr/lib:$SDK/../lib64
-OUTPUT=/work/dist/$PACKAGE-cedarview-$PHP_VERSION-0001.spk
+OUTPUT=/work/dist/$PACKAGE-cedarview-$PHP_VERSION-$BUILD_NUMBER.spk
 
 mkdir -p "$(dirname "$PREFIX")" "$STAGE/misc" /work/dist
 if [[ -e "$PREFIX" && ! -L "$PREFIX" ]]; then
